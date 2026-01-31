@@ -1,0 +1,61 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Install unzip
+      run: sudo apt-get update && sudo apt-get install -y unzip
+
+    - name: Setup Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '11'
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.16.0'
+        channel: 'stable'
+
+    - name: Unzip source
+      run: |
+        if [ -f ai_studio_pro_complete.zip ]; then
+          unzip -o ai_studio_pro_complete.zip -d source_code
+          if [ -d source_code/ai_studio_pro ]; then
+            mv -f source_code/ai_studio_pro . || true
+          else
+            mkdir -p ai_studio_pro
+            mv -f source_code/* ai_studio_pro/ || true
+          fi
+          ls -la ai_studio_pro
+        else
+          echo "ai_studio_pro_complete.zip not found"
+          exit 1
+        fi
+
+    - name: Get dependencies
+      run: |
+        cd ai_studio_pro
+        flutter pub get
+
+    - name: Build APK (release, unsigned)
+      run: |
+        cd ai_studio_pro
+        flutter build apk --release
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: AI-Studio-Pro-APK
+        path: ai_studio_pro/build/app/outputs/flutter-apk/app-release.apk
